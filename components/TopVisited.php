@@ -100,7 +100,7 @@ class TopVisited extends ComponentBase
      * @return [array list] [Blog Categories]
      */
     public function getCategoryOptions(){
-        $categories =  BlogCategory::orderBy('name')->lists('name','id');
+        $categories =  Category::orderBy('name')->lists('name','id');
         return $categories;
     }
     public function onRun(){
