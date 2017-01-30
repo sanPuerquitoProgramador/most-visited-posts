@@ -18,7 +18,7 @@ class TopVisited extends ComponentBase
      * Reference to the page name for linking to posts.
      * @var string
      */
-    // public $postPage;
+    public $postPage;
 
     /**
      *
@@ -48,13 +48,10 @@ class TopVisited extends ComponentBase
                     '1' => 'Today',
                     '2' => 'Current week',
                     '3' => 'Yesterday',
-                    '4' => 'Last week'
+                    '4' => 'Last week',
+                    '5' => 'All time'
                 ],
                 'showExternalParam' => false
-            ],
-            'postPerPage' => [
-                'title'         => 'Post per page',
-                'description'   => '',
             ],
             'category' =>[
                 'title'         => 'Category',
@@ -62,6 +59,10 @@ class TopVisited extends ComponentBase
                 'type'          => 'dropdown',
                 'placeholder'   => 'Select a category',
                 'showExternalParam' => false
+            ],
+            'postPerPage' => [
+                'title'         => 'Post per page',
+                'description'   => '',
             ],
             'postPage' => [
                 'title'         => 'Post page',
@@ -110,9 +111,54 @@ class TopVisited extends ComponentBase
         $category = $this->property('category') ? $this->property('category') : null;
 
         /* Get post page */
-        $postPage = $this->property('postPage') ? $this->property('postPage') : '404';
+        $this->postPage = $this->property('postPage') ? $this->property('postPage') : '404';
 
-        /*Get date range*/
+        /* Obtenemos los ID de los más visitados en el rango solicitado */
+        $topIds = $this->getTop();
+
+        /*
+         * Empezamos con el objeto de los posts en general que estén publicados
+         */
+        $p = Post::isPublished();
+
+        /*
+         * De los obtenidos, filtramos por el ID
+         */
+        $p->whereHas('visits', function($q) use ($topIds) {
+                $q->whereIn('post_id', $topIds);
+            })
+            ->with('visits');
+
+        /*
+         * Hacemos el get()
+         */
+
+        $topPosts = $p->get();
+
+        /*
+         * Organizamos los resultados... no me preguntem solo sé que así salió
+         */
+        $topPosts = $topPosts->sortByDesc(function ($post, $key){
+            return count($post->visits);
+        });
+
+        /*
+         * Agregamos el helper de la URL
+         */
+        $topPosts->each(function($post) {
+           $post->setUrl($this->postPage,$this->controller);
+        });
+
+        /*
+         * Mandamos los resultados como variable al componente
+         */
+        $this->topPosts = $topPosts;
+
+    }
+    public function getTop(){
+        /*
+         * Get date range
+         */
         switch($this->property('period')){
             case '1':
                 $dateRange = Carbon::today();
@@ -133,56 +179,17 @@ class TopVisited extends ComponentBase
             break;
         }
 
-        // $query = Post::isPublished()
-        //     ->whereIn('id', function($q){
-        //         switch($this->property('period')){
-        //             case '1':
-        //                 $dateRange = Carbon::today();
-        //             break;
-        //             case '2':
-        //                 $fromDate = Carbon::now()->startOfWeek()->format('Y-m-d');
-        //                 $toDate = Carbon::now()->endOfWeek()->format('Y-m-d');
-        //             break;
-        //             case '3':
-        //                 $dateRange = Carbon::yesterday();
-        //             break;
-        //             case '4':
-        //                 $fromDate = Carbon::now()->subDays(7)->startOfWeek()->format('Y/m/d');
-        //                 $toDate = Carbon::now()->subDays(7)->endOfWeek()->format('Y/m/d');
-        //             break;
-        //             default:
-        //                 $dateRange = Carbon::today();
-        //             break;
-        //         }
-        //         $q = isset($dateRange) ? $q->where('date',$dateRange) : $q->whereBetween('date', array($fromDate, $toDate));
-        //         $q  ->select('post_id')
-        //             ->from(with(new Visits)->getTable())
-        //             ->selectRaw('sum(visits) as visits')
-        //             ->groupBy('post_id')
-        //             ->orderBy('visits','desc')
-        //             ->get();
-        //     })
-        //     ->limit(10);
-        // $topPost = $query ->get();
-
-        /**
-         * Get topPost y los demás heredados
+        /*
+         * Hacemos la consulta en el rango (queda pendiente el filtro por categoria)
          */
-        $query = new Visits;
-        $query = isset($dateRange) ? $query->where('date',$dateRange) : $query->whereBetween('date', array($fromDate, $toDate));
-        $query  ->select('post_id')
+        $v = new Visits;
+        $v = isset($dateRange) ? $v->where('date',$dateRange) : $v->whereBetween('date', array($fromDate, $toDate));
+        $v  ->select('post_id')
                 ->selectRaw('sum(visits) as visits, count(post_id) as touchs')
                 ->groupBy('post_id')
                 ->orderBy('visits','desc')
                 ->limit($this->property('postPerPage'));
-        $topPost = $query->get();
-
-
-        /* Add a "url" helper attribute for linking to each post */
-        // $topPost->each(function($query) {
-        //    $query->setUrl($this->postPage,$this->controller);
-        // });
-
-        $this->topPosts = $topPost;
+        $topIds = $v -> lists('post_id');
+        return $topIds;
     }
 }

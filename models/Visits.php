@@ -1,8 +1,10 @@
 <?php namespace PolloZen\MostVisited\Models;
 
 use Model;
-use RainLab\Blog\Models\Category as BlogCategory;
-use RainLab\Blog\Models\Post as BlogPost;
+// use RainLab\Blog\Models\Category as BlogCategory;
+use RainLab\Blog\Models\Post;
+use Config;
+
 
 /**
  * Visits Model
