@@ -4,7 +4,7 @@ use Cms\Classes\Page;
 use Cms\Classes\ComponentBase;
 use Carbon\Carbon;
 use PolloZen\MostVisited\Models\Visits;
-use RainLab\Blog\Models\Category;
+// use RainLab\Blog\Models\Category;
 use RainLab\Blog\Models\Post;
 
 class TopVisited extends ComponentBase
@@ -21,9 +21,9 @@ class TopVisited extends ComponentBase
     public $postPage;
 
     /**
-     *
+     * Category filter
      */
-    // public $dateRange;
+    public $category;
 
     public function componentDetails()
     {
@@ -108,7 +108,7 @@ class TopVisited extends ComponentBase
         $this->prepareVars();
 
         /*Get the category filter*/
-        $category = $this->property('category') ? $this->property('category') : null;
+        $this->category = $this->property('category') ? $this->property('category') : null;
 
         /* Get post page */
         $this->postPage = $this->property('postPage') ? $this->property('postPage') : '404';
@@ -189,7 +189,17 @@ class TopVisited extends ComponentBase
                 ->groupBy('post_id')
                 ->orderBy('visits','desc')
                 ->limit($this->property('postPerPage'));
+
+        if ($this->category !== null) {
+            $category = $this->category;
+            if (!is_array($category)) $category = [$category];
+            //     $v->whereHas('categories', function($q) use ($category) { //por aqui va el filtro de la categoria.... no soltar
+            //         $q->whereIn('id', $category);
+            // });
+        }
+
         $topIds = $v -> lists('post_id');
+
         return $topIds;
     }
 }
