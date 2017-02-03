@@ -4,15 +4,15 @@ use Cms\Classes\Page;
 use Cms\Classes\ComponentBase;
 use Carbon\Carbon;
 use PolloZen\MostVisited\Models\Visits;
-// use RainLab\Blog\Models\Category;
 use RainLab\Blog\Models\Post;
+use RainLab\Blog\Models\Category;
 
 class TopVisited extends ComponentBase
 {
      /**
      * @var Illuminate\Database\Eloquent\Collection | array
      */
-    public $topPosts;
+    public $mostVisitedPosts;
 
     /**
      * Reference to the page name for linking to posts.
@@ -40,9 +40,9 @@ class TopVisited extends ComponentBase
     {
         return [
             'period' =>[
-                'title'         => 'Top 10 from:',
+                'title'         => 'Most visited from:',
                 'description'   => '',
-                'default'       => 4,
+                'default'       => 2,
                 'type'          => 'dropdown',
                 'options' => [
                     '1' => 'Today',
@@ -54,15 +54,18 @@ class TopVisited extends ComponentBase
                 'showExternalParam' => false
             ],
             'category' =>[
-                'title'         => 'Category',
+                'title'         => 'Category Filter',
                 'description'   => 'Filter result by category. All categories by default',
                 'type'          => 'dropdown',
                 'placeholder'   => 'Select a category',
-                'showExternalParam' => false
+                'showExternalParam' => false,
+                'default'       => 0
             ],
             'postPerPage' => [
-                'title'         => 'Post per page',
-                'description'   => '',
+                'title'         => 'Top',
+                'description'   => 'How many results must be fetched',
+                'default' => 5,
+                'type' => 'string'
             ],
             'postPage' => [
                 'title'         => 'Post page',
@@ -81,14 +84,6 @@ class TopVisited extends ComponentBase
         ];
     }
     /**
-     * prepare Vars function
-     * @return [object]
-     */
-    protected function prepareVars()
-    {
-        $this->postParam = $this->page['postParam'] = $this->property('postParam');
-    }
-    /**
      * [getPostPageOptions]
      * @return [array][Blog]
      */
@@ -101,64 +96,36 @@ class TopVisited extends ComponentBase
      * @return [array list] [Blog Categories]
      */
     public function getCategoryOptions(){
-        $categories =  Category::orderBy('name')->lists('name','id');
+        $categories = [0=>'No filter'] + Category::orderBy('name')->lists('name','id');
         return $categories;
     }
     public function onRun(){
         $this->prepareVars();
+        $this->mostVisitedPosts = $this->page['mostVisitedPosts'] = $this->getMostVisitedPosts();
 
+    }
+
+    /**
+     * prepare Vars function
+     * @return [object]
+     */
+    protected function prepareVars() {
         /*Get the category filter*/
-        $this->category = $this->property('category') ? $this->property('category') : null;
+        $this->category = ($this->property('category')!=0) ? $this->property('category') : null;
 
         /* Get post page */
         $this->postPage = $this->property('postPage') ? $this->property('postPage') : '404';
 
-        /* Obtenemos los ID de los más visitados en el rango solicitado */
-        $topIds = $this->getTop();
-
-        /*
-         * Empezamos con el objeto de los posts en general que estén publicados
-         */
-        $p = Post::isPublished();
-
-        /*
-         * De los obtenidos, filtramos por el ID
-         */
-        $p->whereHas('visits', function($q) use ($topIds) {
-                $q->whereIn('post_id', $topIds);
-            })
-            ->with('visits');
-
-        /*
-         * Hacemos el get()
-         */
-
-        $topPosts = $p->get();
-
-        /*
-         * Organizamos los resultados... no me preguntem solo sé que así salió
-         */
-        $topPosts = $topPosts->sortByDesc(function ($post, $key){
-            return count($post->visits);
-        });
-
-        /*
-         * Agregamos el helper de la URL
-         */
-        $topPosts->each(function($post) {
-           $post->setUrl($this->postPage,$this->controller);
-        });
-
-        /*
-         * Mandamos los resultados como variable al componente
-         */
-        $this->topPosts = $topPosts;
-
+        /* Top */
+        $this->postPerPage = is_int($this->property('postPerPage')) ? $this->property('postPerPage') : 5;
     }
-    public function getTop(){
-        /*
-         * Get date range
-         */
+
+
+    /**
+     * getTop Function [Obtiene los Post ID  del rango y categorua seleccionados]
+     * @return [type] [description]
+     */
+    protected function getTop(){
         switch($this->property('period')){
             case '1':
                 $dateRange = Carbon::today();
@@ -175,31 +142,57 @@ class TopVisited extends ComponentBase
                 $toDate = Carbon::now()->subDays(7)->endOfWeek()->format('Y/m/d');
             break;
             default:
-                $dateRange = Carbon::today();
+                // Si no hay fecha se toman todos
             break;
         }
 
-        /*
-         * Hacemos la consulta en el rango (queda pendiente el filtro por categoria)
-         */
-        $v = new Visits;
-        $v = isset($dateRange) ? $v->where('date',$dateRange) : $v->whereBetween('date', array($fromDate, $toDate));
-        $v  ->select('post_id')
-                ->selectRaw('sum(visits) as visits, count(post_id) as touchs')
-                ->groupBy('post_id')
-                ->orderBy('visits','desc')
-                ->limit($this->property('postPerPage'));
+        $v = Visits::select('pollozen_mostvisited_visits.post_id');
 
-        if ($this->category !== null) {
-            $category = $this->category;
-            if (!is_array($category)) $category = [$category];
-            //     $v->whereHas('categories', function($q) use ($category) { //por aqui va el filtro de la categoria.... no soltar
-            //         $q->whereIn('id', $category);
-            // });
+        if(isset($dateRange)){
+            $v->where('date',$dateRange);
+        } elseif (isset($fromDate)) {
+            $v->whereBetween('date', array($fromDate, $toDate));
         }
 
-        $topIds = $v -> lists('post_id');
+        $v  ->selectRaw('sum(visits) as visits, count(pollozen_mostvisited_visits.post_id) as touchs')
+            ->groupBy('post_id')
+            ->orderBy('visits','desc');
 
+        if($this->category !== null){
+            $v->join('rainlab_blog_posts_categories',function($join){
+                $join ->on('pollozen_mostvisited_visits.post_id','=','rainlab_blog_posts_categories.post_id')
+                ->where('rainlab_blog_posts_categories.category_id','=',$this->category);
+            });
+        }
+
+        $v->limit($this->property('postPerPage'));
+
+        $topIds = $v -> lists('post_id');
         return $topIds;
+    }
+
+    protected function getMostVisitedPosts(){
+        /* Obtenemos los ID de los más visitados en el rango solicitado */
+        $topIds = $this->getTop();
+        $placeholders = implode(',', array_fill(0, count($topIds), '?')) ;
+
+        /* Empezamos con el objeto de los posts en general que estén publicados*/
+        $p = Post::isPublished();
+
+        /* De los obtenidos, filtramos por el ID y ordenamos en el sentido del where in*/
+        $p->whereHas('visits', function($q) use ($topIds) {
+                $q->whereIn('post_ida', $topIds);
+            })
+            ->orderByRaw("FIELD(id,{$placeholders})",$topIds);
+
+        $mostVisitedPosts = $p->get();
+
+        /* Agregamos el helper de la URL*/
+        $mostVisitedPosts->each(function($post) {
+           $post->setUrl($this->postPage,$this->controller);
+        });
+
+        /* Mandamos los resultados */
+        return $mostVisitedPosts;
     }
 }

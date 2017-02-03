@@ -10,7 +10,7 @@ class RegisterVisit extends ComponentBase
     {
         return [
             'name'        => 'Register Visit',
-            'description' => 'Attach this component to your post page/partial in order to register the user visit'
+            'description' => 'Attach this component to your blog post page/partial in order to register the user visit'
         ];
     }
 
