@@ -181,7 +181,7 @@ class TopVisited extends ComponentBase
 
         /* De los obtenidos, filtramos por el ID y ordenamos en el sentido del where in*/
         $p->whereHas('visits', function($q) use ($topIds) {
-                $q->whereIn('post_ida', $topIds);
+                $q->whereIn('post_id', $topIds);
             })
             ->orderByRaw("FIELD(id,{$placeholders})",$topIds);
 
