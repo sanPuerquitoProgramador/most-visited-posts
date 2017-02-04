@@ -174,25 +174,28 @@ class TopVisited extends ComponentBase
     protected function getMostVisitedPosts(){
         /* Obtenemos los ID de los más visitados en el rango solicitado */
         $topIds = $this->getTop();
-        $placeholders = implode(',', array_fill(0, count($topIds), '?')) ;
+        if(count($topIds)!=0){
+            $placeholders = implode(',', array_fill(0, count($topIds), '?')) ;
 
-        /* Empezamos con el objeto de los posts en general que estén publicados*/
-        $p = Post::isPublished();
+            /* Empezamos con el objeto de los posts en general que estén publicados*/
+            $p = Post::isPublished();
 
-        /* De los obtenidos, filtramos por el ID y ordenamos en el sentido del where in*/
-        $p->whereHas('visits', function($q) use ($topIds) {
-                $q->whereIn('post_id', $topIds);
-            })
-            ->orderByRaw("FIELD(id,{$placeholders})",$topIds);
+            /* De los obtenidos, filtramos por el ID y ordenamos en el sentido del where in*/
+            $p->whereHas('visits', function($q) use ($topIds) {
+                    $q->whereIn('post_id', $topIds);
+                })
+                ->orderByRaw("FIELD(id,{$placeholders})",$topIds);
 
-        $mostVisitedPosts = $p->get();
+            $mostVisitedPosts = $p->get();
 
-        /* Agregamos el helper de la URL*/
-        $mostVisitedPosts->each(function($post) {
-           $post->setUrl($this->postPage,$this->controller);
-        });
-
-        /* Mandamos los resultados */
-        return $mostVisitedPosts;
+            /* Agregamos el helper de la URL*/
+            $mostVisitedPosts->each(function($post) {
+               $post->setUrl($this->postPage,$this->controller);
+            });
+            /* Mandamos los resultados */
+            return $mostVisitedPosts;
+        } else {
+            return [];
+        }
     }
 }

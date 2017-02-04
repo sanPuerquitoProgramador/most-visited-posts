@@ -1,6 +1,6 @@
 #Most Visited Post for [RainLab Blog](https://octobercms.com/plugin/rainlab-blog)
 
-Plugin to register visits to Blog Publications and create a list of the most visited posts in a period of time
+Plugin to register visits to [RainLab Blog](https://octobercms.com/plugin/rainlab-blog) Blog Publications and create a list of the most visited posts in a period of time
 
 ##Installing the watcher
 **IMPORTANT**
