@@ -1,13 +1,13 @@
 #Most Visited Post for [RainLab Blog](https://octobercms.com/plugin/rainlab-blog)
 
-Plugin for register visits to Blog Publications and retrieve a list of the most visited
+Plugin to register visits to Blog Publications and create a list of the most visited post in a period time
 
 ##Installing the watcher
 **IMPORTANT**
 
 In order to register the visit to a Publication `RegisterVisit` component must be added to Post Page
 
-##Retrieving the most visited posts list
+##Create a most visited posts list
 Add the `TopVisitedComponent`
 
 This component has parameters
@@ -21,7 +21,7 @@ This component has parameters
 
 **Category filter**
 
-You can select a category filter, this way you can get the Top 10 from a particular category. If no category selected, the component will retrieve the top 10 from all your publications
+You can select a category filter, this way you can get the Top 10 from a particular category. If no category is selected, the component will retrieve the top 10 from all your publications
 
 **Top**
 
