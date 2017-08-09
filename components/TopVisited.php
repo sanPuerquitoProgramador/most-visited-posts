@@ -166,8 +166,8 @@ class TopVisited extends ComponentBase
         }
 
         $v->limit($this->property('postPerPage'));
-
         $topIds = $v -> lists('post_id');
+
         return $topIds;
     }
 
@@ -179,13 +179,8 @@ class TopVisited extends ComponentBase
 
             /* Empezamos con el objeto de los posts en general que estén publicados*/
             $p = Post::isPublished();
-
-            /* De los obtenidos, filtramos por el ID y ordenamos en el sentido del where in*/
-            $p->whereHas('visits', function($q) use ($topIds) {
-                    $q->whereIn('post_id', $topIds);
-                })
-                ->orderByRaw("FIELD(id,{$placeholders})",$topIds);
-
+            $p->whereIn('id', $topIds);
+            $p->orderByRaw("FIELD(id,{$placeholders})",$topIds);
             $mostVisitedPosts = $p->get();
 
             /* Agregamos el helper de la URL*/
